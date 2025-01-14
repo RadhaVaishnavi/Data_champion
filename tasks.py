@@ -18,7 +18,10 @@ df = pd.DataFrame(companies_data)
 # Function to scrape the description from a website
 def scrape_website_description(url):
     try:
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
@@ -27,6 +30,8 @@ def scrape_website_description(url):
         if description and description.get("content"):
             return description["content"]
         return "No description available."
+    except requests.exceptions.HTTPError as e:
+        return f"Error: HTTP Error {e.response.status_code} for URL {url}"
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -54,7 +59,6 @@ if search_query:
         st.warning("No company found with that name.")
 else:
     st.info("Enter a company name in the search bar to see its details.")
-
 
 
 
