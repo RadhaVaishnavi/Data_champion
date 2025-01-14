@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 # Preloaded company data
 companies_data = [
@@ -15,32 +19,26 @@ companies_data = [
 # Convert data to DataFrame
 df = pd.DataFrame(companies_data)
 
-# Function to scrape the description from a website
+# Function to scrape the description from a website using Selenium
 def scrape_website_description(url):
     try:
-        # Using a session for persistent connections
-        with requests.Session() as session:
-            # Setting up headers to mimic a browser request
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br"
-            }
+        # Set up Chrome options
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # Run headlessly (no UI)
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
 
-            # Request to the website with added headers
-            response = session.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
+        # Set up WebDriver with ChromeDriver Manager
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver.get(url)
+        time.sleep(3)  # Wait for the page to load (may need adjustment)
 
-            # Parse the page content with BeautifulSoup
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            # Example: Extract meta description or a specific tag content
-            description = soup.find("meta", attrs={"name": "description"})
-            if description and description.get("content"):
-                return description["content"]
-            return "No description available."
-    except requests.exceptions.HTTPError as e:
-        return f"Error: HTTP Error {e.response.status_code} for URL {url}"
+        # Example: Try to scrape description from <meta name="description"> or similar
+        description_element = driver.find_element(By.XPATH, "//meta[@name='description']")
+        description = description_element.get_attribute("content") if description_element else "No description available."
+        
+        driver.quit()  # Close the browser after scraping
+        return description
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -68,7 +66,6 @@ if search_query:
         st.warning("No company found with that name.")
 else:
     st.info("Enter a company name in the search bar to see its details.")
-
 
 
 # import streamlit as st
