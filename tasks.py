@@ -21,6 +21,7 @@ data = pd.DataFrame({
 def scrape_website(url):
     try:
         response = requests.get(url, timeout=5)
+        print(response)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
             
