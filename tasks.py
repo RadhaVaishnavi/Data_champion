@@ -18,18 +18,27 @@ df = pd.DataFrame(companies_data)
 # Function to scrape the description from a website
 def scrape_website_description(url):
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        # Using a session for persistent connections
+        with requests.Session() as session:
+            # Setting up headers to mimic a browser request
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept-Encoding": "gzip, deflate, br"
+            }
 
-        # Example: Extract meta description or a specific tag content
-        description = soup.find("meta", attrs={"name": "description"})
-        if description and description.get("content"):
-            return description["content"]
-        return "No description available."
+            # Request to the website with added headers
+            response = session.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+
+            # Parse the page content with BeautifulSoup
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Example: Extract meta description or a specific tag content
+            description = soup.find("meta", attrs={"name": "description"})
+            if description and description.get("content"):
+                return description["content"]
+            return "No description available."
     except requests.exceptions.HTTPError as e:
         return f"Error: HTTP Error {e.response.status_code} for URL {url}"
     except Exception as e:
