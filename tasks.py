@@ -1,72 +1,80 @@
-import streamlit as st
-import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-import time
+import requests
+from bs4 import BeautifulSoup
 
-# Preloaded company data
-companies_data = [
-    {"Company Name": "Nestle", "Website": "https://www.nestle.com"},
-    {"Company Name": "Pfizer", "Website": "https://www.pfizer.com"},
-    {"Company Name": "Coca-Cola", "Website": "https://www.coca-colacompany.com"},
-    {"Company Name": "PepsiCo", "Website": "https://www.pepsico.com"},
-    {"Company Name": "Unilever", "Website": "https://www.unilever.com"},
-]
-
-# Convert data to DataFrame
-df = pd.DataFrame(companies_data)
-
-# Function to scrape the description from a website using Selenium
-def scrape_website_description(url):
-    try:
-        # Set up Chrome options
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Run headlessly (no UI)
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("window-size=1200x600")  # Set window size
-
-        # Set up WebDriver with ChromeDriver Manager
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        driver.get(url)
-        time.sleep(3)  # Wait for the page to load (may need adjustment)
-
-        # Example: Try to scrape description from <meta name="description"> or similar
-        description_element = driver.find_element(By.XPATH, "//meta[@name='description']")
-        description = description_element.get_attribute("content") if description_element else "No description available."
+# Function to fetch company information by searching for it on Google
+def get_company_info(company_name):
+    # Google search URL to find the company
+    search_url = f"https://www.google.com/search?q={company_name}"
+    
+    # Custom headers to mimic a browser request (this avoids being blocked by websites)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    
+    # Make a GET request to Google search
+    response = requests.get(search_url, headers=headers)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        driver.quit()  # Close the browser after scraping
-        return description
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# Streamlit app title
-st.title("Company Classification Tool with Web Scraping")
-
-# Search bar
-search_query = st.text_input("Search for a company by name:", "")
-
-# Show the data if there's a search query
-if search_query:
-    # Filter the DataFrame based on search query
-    filtered_data = df[df["Company Name"].str.contains(search_query, case=False, na=False)]
-
-    if not filtered_data.empty:
-        for _, row in filtered_data.iterrows():
-            st.write(f"**Company Name:** {row['Company Name']}")
-            st.write(f"**Website:** {row['Website']}")
-
-            # Scrape the website for description
-            with st.spinner("Scraping website for description..."):
-                description = scrape_website_description(row["Website"])
-            st.write(f"**Description:** {description}")
+        # Find the first search result that seems like the official website
+        link = soup.find('a', href=True)
+        
+        if link:
+            # The href attribute contains the website URL
+            company_url = link['href']
+            company_name = company_name.capitalize()
+            
+            # Make a GET request to the company URL to get more details
+            company_page = requests.get(company_url, headers=headers)
+            
+            if company_page.status_code == 200:
+                company_soup = BeautifulSoup(company_page.text, 'html.parser')
+                
+                # Try to find the description from meta tag (common method)
+                meta_description = company_soup.find("meta", attrs={"name": "description"})
+                
+                if meta_description:
+                    description = meta_description.get("content", "No description available.")
+                else:
+                    description = "No description available."
+                
+                # Return the information in a dictionary format
+                return {
+                    'company_name': company_name,
+                    'company_url': company_url,
+                    'description': description
+                }
+            else:
+                return {
+                    'error': f"Failed to retrieve the company page, status code: {company_page.status_code}"
+                }
+        else:
+            return {
+                'error': "No link found for the company."
+            }
     else:
-        st.warning("No company found with that name.")
-else:
-    st.info("Enter a company name in the search bar to see its details.")
+        return {
+            'error': f"Failed to retrieve search results, status code: {response.status_code}"
+        }
+
+# Function to display the fetched company info
+def display_company_info(company_name):
+    company_info = get_company_info(company_name)
+    
+    if 'error' in company_info:
+        print(f"Error: {company_info['error']}")
+    else:
+        print(f"Company Name: {company_info['company_name']}")
+        print(f"Website: {company_info['company_url']}")
+        print(f"Description: {company_info['description']}")
+
+# Main function to run the search and display result
+if __name__ == "__main__":
+    # Input company name to search
+    company_name = input("Enter the company name to search: ")
+    display_company_info(company_name)
+
 
 # import streamlit as st
 # import pandas as pd
