@@ -27,6 +27,7 @@ def scrape_website_description(url):
         chrome_options.add_argument("--headless")  # Run headlessly (no UI)
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("window-size=1200x600")  # Set window size
 
         # Set up WebDriver with ChromeDriver Manager
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
@@ -66,7 +67,6 @@ if search_query:
         st.warning("No company found with that name.")
 else:
     st.info("Enter a company name in the search bar to see its details.")
-
 
 # import streamlit as st
 # import pandas as pd
